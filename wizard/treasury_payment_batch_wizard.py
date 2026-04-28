@@ -16,6 +16,9 @@ class TreasuryPaymentBatchWizard(models.TransientModel):
 
     line_ids = fields.Many2many(
         'rfh.treasury.payment.schedule',
+        relation='rfh_tps_batch_wizard_rel',
+        column1='wizard_id',
+        column2='schedule_id',
         string='Selected Payments',
         readonly=True,
     )
