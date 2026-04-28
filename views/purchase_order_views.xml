@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Extend purchase.order form to add Treasury smart button and Queue button -->
+    <record id="view_purchase_order_form_treasury" model="ir.ui.view">
+        <field name="name">purchase.order.form.treasury</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Smart button in button_box -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_treasury_payments" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        invisible="treasury_payment_count == 0">
+                    <field name="treasury_payment_count" string="Treasury Payments" widget="statinfo"/>
+                </button>
+            </xpath>
+
+            <!-- Treasury payment state badge near title -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="treasury_payment_state" widget="badge"
+                       decoration-muted="treasury_payment_state == 'not_queued'"
+                       decoration-info="treasury_payment_state == 'queued'"
+                       decoration-warning="treasury_payment_state == 'scheduled'"
+                       decoration-primary="treasury_payment_state == 'partially_paid'"
+                       decoration-success="treasury_payment_state == 'paid'"/>
+            </xpath>
+
+            <!-- Queue for Treasury Payment button in header -->
+            <xpath expr="//header/button[last()]" position="after">
+                <button name="action_create_treasury_payment_schedule" type="object"
+                        string="Queue for Treasury Payment"
+                        class="btn-warning"
+                        groups="rfh_treasury_payment_schedule.group_treasury_user"
+                        invisible="state not in ('purchase','done') or treasury_payment_state in ('queued','scheduled','partially_paid','paid')"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

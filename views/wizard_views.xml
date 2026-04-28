@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_treasury_batch_wizard_form" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.batch.wizard.form</field>
+        <field name="model">rfh.treasury.payment.batch.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Payment Batch">
+                <group>
+                    <group string="Batch Settings">
+                        <field name="scheduled_date"/>
+                        <field name="journal_id"/>
+                        <field name="payment_reference"/>
+                    </group>
+                    <group string="Summary">
+                        <field name="line_count" string="Selected Lines" readonly="1"/>
+                        <field name="total_amount" readonly="1"/>
+                        <field name="currency_id" readonly="1"/>
+                    </group>
+                </group>
+                <notebook>
+                    <page string="Selected Payments">
+                        <field name="line_ids" readonly="1">
+                            <list>
+                                <field name="name"/>
+                                <field name="source_reference"/>
+                                <field name="partner_id"/>
+                                <field name="amount"/>
+                                <field name="currency_id" column_invisible="True"/>
+                                <field name="priority"/>
+                                <field name="due_date"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+                <footer>
+                    <button name="action_create_batch" type="object" string="Create Batch"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

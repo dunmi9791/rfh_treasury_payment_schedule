@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Root Treasury menu -->
+    <menuitem id="menu_treasury_root"
+              name="Treasury"
+              sequence="55"
+              groups="rfh_treasury_payment_schedule.group_treasury_user,rfh_treasury_payment_schedule.group_treasury_auditor"/>
+
+    <!-- Dashboard -->
+    <menuitem id="menu_treasury_dashboard"
+              name="Payment Dashboard"
+              parent="menu_treasury_root"
+              action="rfh_treasury_payment_schedule.action_treasury_payment_dashboard"
+              sequence="10"
+              groups="rfh_treasury_payment_schedule.group_treasury_user,rfh_treasury_payment_schedule.group_treasury_auditor"/>
+
+    <!-- Payment Schedules -->
+    <menuitem id="menu_treasury_payment_schedules"
+              name="Payment Schedules"
+              parent="menu_treasury_root"
+              action="rfh_treasury_payment_schedule.action_treasury_payment_schedule"
+              sequence="20"
+              groups="rfh_treasury_payment_schedule.group_treasury_user,rfh_treasury_payment_schedule.group_treasury_auditor"/>
+
+    <!-- Payment Batches -->
+    <menuitem id="menu_treasury_payment_batches"
+              name="Payment Batches"
+              parent="menu_treasury_root"
+              action="rfh_treasury_payment_schedule.action_treasury_payment_batch"
+              sequence="30"
+              groups="rfh_treasury_payment_schedule.group_treasury_user,rfh_treasury_payment_schedule.group_treasury_auditor"/>
+
+    <!-- Configuration sub-menu (Manager only) -->
+    <menuitem id="menu_treasury_config"
+              name="Configuration"
+              parent="menu_treasury_root"
+              sequence="100"
+              groups="rfh_treasury_payment_schedule.group_treasury_manager"/>
+
+</odoo>

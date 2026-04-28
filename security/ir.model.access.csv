@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_treasury_schedule_user,Treasury Schedule User,model_rfh_treasury_payment_schedule,group_treasury_user,1,1,1,0
+access_treasury_schedule_manager,Treasury Schedule Manager,model_rfh_treasury_payment_schedule,group_treasury_manager,1,1,1,1
+access_treasury_schedule_auditor,Treasury Schedule Auditor,model_rfh_treasury_payment_schedule,group_treasury_auditor,1,0,0,0
+access_treasury_batch_user,Treasury Batch User,model_rfh_treasury_payment_batch,group_treasury_user,1,1,1,0
+access_treasury_batch_manager,Treasury Batch Manager,model_rfh_treasury_payment_batch,group_treasury_manager,1,1,1,1
+access_treasury_batch_auditor,Treasury Batch Auditor,model_rfh_treasury_payment_batch,group_treasury_auditor,1,0,0,0
+access_treasury_batch_wizard_user,Treasury Batch Wizard User,model_rfh_treasury_payment_batch_wizard,group_treasury_user,1,1,1,1
+access_treasury_batch_wizard_manager,Treasury Batch Wizard Manager,model_rfh_treasury_payment_batch_wizard,group_treasury_manager,1,1,1,1

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         LIST VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_batch_list" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.batch.list</field>
+        <field name="model">rfh.treasury.payment.batch</field>
+        <field name="arch" type="xml">
+            <list decoration-success="state == 'paid'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name" string="Batch Reference"/>
+                <field name="date" string="Batch Date"/>
+                <field name="scheduled_date"/>
+                <field name="payment_date"/>
+                <field name="total_amount" sum="Grand Total"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="line_count" string="Lines"/>
+                <field name="journal_id"/>
+                <field name="payment_reference"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-warning="state == 'submitted'"
+                       decoration-primary="state == 'approved'"
+                       decoration-success="state == 'paid'"
+                       decoration-danger="state == 'cancelled'"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         FORM VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_batch_form" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.batch.form</field>
+        <field name="model">rfh.treasury.payment.batch</field>
+        <field name="arch" type="xml">
+            <form string="Treasury Payment Batch">
+                <header>
+                    <button name="action_submit" type="object" string="Submit for Approval"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_approve" type="object" string="Approve"
+                            class="btn-primary"
+                            groups="rfh_treasury_payment_schedule.group_treasury_manager"
+                            invisible="state != 'submitted'"/>
+                    <button name="action_mark_paid" type="object" string="Mark Batch as Paid"
+                            class="btn-success"
+                            groups="rfh_treasury_payment_schedule.group_treasury_manager"
+                            invisible="state != 'approved'"
+                            confirm="This will mark all lines in this batch as paid. Continue?"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            groups="rfh_treasury_payment_schedule.group_treasury_manager"
+                            invisible="state in ('paid','cancelled')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,submitted,approved,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_lines" type="object"
+                                class="oe_stat_button" icon="fa-list">
+                            <field name="line_count" string="Lines" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Batch Details">
+                            <field name="date"/>
+                            <field name="scheduled_date"/>
+                            <field name="payment_date"
+                                   required="state == 'approved'"/>
+                            <field name="total_amount" readonly="1"/>
+                            <field name="currency_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Payment Settings">
+                            <field name="journal_id"
+                                   required="state == 'approved'"/>
+                            <field name="payment_reference"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Payment Lines">
+                            <field name="line_ids" readonly="state in ('paid','cancelled')"
+                                   domain="[('state','not in',['paid','cancelled'])]">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="source_reference"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                    <field name="priority"/>
+                                    <field name="due_date"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         SEARCH VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_batch_search" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.batch.search</field>
+        <field name="model">rfh.treasury.payment.batch</field>
+        <field name="arch" type="xml">
+            <search string="Search Batches">
+                <field name="name"/>
+                <field name="payment_reference"/>
+                <filter string="Draft" name="f_draft" domain="[('state','=','draft')]"/>
+                <filter string="Submitted" name="f_submitted" domain="[('state','=','submitted')]"/>
+                <filter string="Approved" name="f_approved" domain="[('state','=','approved')]"/>
+                <filter string="Paid" name="f_paid" domain="[('state','=','paid')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="State" name="gb_state" context="{'group_by':'state'}"/>
+                    <filter string="Date" name="gb_date" context="{'group_by':'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         ACTION
+    ============================================================ -->
+    <record id="action_treasury_payment_batch" model="ir.actions.act_window">
+        <field name="name">Payment Batches</field>
+        <field name="res_model">rfh.treasury.payment.batch</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_treasury_payment_batch_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No payment batches yet.</p>
+            <p>Use the 'Create Batch' wizard from the Payment Schedules list to group payments.</p>
+        </field>
+    </record>
+
+</odoo>

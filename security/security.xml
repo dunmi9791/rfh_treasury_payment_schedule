@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         Categories
+    ============================================================ -->
+    <record id="module_category_treasury" model="ir.module.category">
+        <field name="name">Treasury</field>
+        <field name="description">Treasury Payment Scheduling</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <!-- ============================================================
+         Security Groups
+    ============================================================ -->
+
+    <record id="group_treasury_user" model="res.groups">
+        <field name="name">Treasury User</field>
+        <field name="category_id" ref="module_category_treasury"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Can create, read, and schedule treasury payments. Cannot approve or mark as paid.</field>
+    </record>
+
+    <record id="group_treasury_manager" model="res.groups">
+        <field name="name">Treasury Manager</field>
+        <field name="category_id" ref="module_category_treasury"/>
+        <field name="implied_ids" eval="[(4, ref('group_treasury_user'))]"/>
+        <field name="comment">Full access: create, approve, mark paid, batch, cancel.</field>
+    </record>
+
+    <record id="group_treasury_auditor" model="res.groups">
+        <field name="name">Treasury Auditor</field>
+        <field name="category_id" ref="module_category_treasury"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Read-only access to all treasury records. Cannot edit, approve, or delete.</field>
+    </record>
+
+    <!-- ============================================================
+         Record Rules  (company-aware)
+    ============================================================ -->
+
+    <!-- Payment Schedule: User sees own-company records -->
+    <record id="rule_treasury_schedule_company_user" model="ir.rule">
+        <field name="name">Treasury Payment Schedule: Company User</field>
+        <field name="model_id" ref="model_rfh_treasury_payment_schedule"/>
+        <field name="groups" eval="[(4, ref('group_treasury_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- Payment Schedule: Auditor sees own-company records (read only via access CSV) -->
+    <record id="rule_treasury_schedule_company_auditor" model="ir.rule">
+        <field name="name">Treasury Payment Schedule: Company Auditor</field>
+        <field name="model_id" ref="model_rfh_treasury_payment_schedule"/>
+        <field name="groups" eval="[(4, ref('group_treasury_auditor'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Payment Batch: User sees own-company records -->
+    <record id="rule_treasury_batch_company_user" model="ir.rule">
+        <field name="name">Treasury Payment Batch: Company User</field>
+        <field name="model_id" ref="model_rfh_treasury_payment_batch"/>
+        <field name="groups" eval="[(4, ref('group_treasury_user'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- Payment Batch: Auditor -->
+    <record id="rule_treasury_batch_company_auditor" model="ir.rule">
+        <field name="name">Treasury Payment Batch: Company Auditor</field>
+        <field name="model_id" ref="model_rfh_treasury_payment_batch"/>
+        <field name="groups" eval="[(4, ref('group_treasury_auditor'))]"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+</odoo>

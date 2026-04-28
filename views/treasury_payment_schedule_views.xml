@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         LIST VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_schedule_list" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.schedule.list</field>
+        <field name="model">rfh.treasury.payment.schedule</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="priority in ('urgent','critical')"
+                  decoration-warning="priority == 'high'"
+                  decoration-muted="priority == 'low'"
+                  decoration-success="state == 'paid'"
+                  default_order="priority_sequence asc, scheduled_date asc">
+                <field name="priority_color" widget="color_index" optional="show"/>
+                <field name="name" string="Reference"/>
+                <field name="source_reference" string="Source Doc"/>
+                <field name="partner_id"/>
+                <field name="amount" sum="Total Amount"/>
+                <field name="balance" sum="Total Balance"/>
+                <field name="currency_id" column_invisible="True"/>
+                <field name="priority"/>
+                <field name="due_date"/>
+                <field name="scheduled_date"/>
+                <field name="state" widget="badge"
+                       decoration-info="state in ('draft','queued')"
+                       decoration-warning="state in ('scheduled','batched')"
+                       decoration-primary="state == 'approved'"
+                       decoration-success="state == 'paid'"
+                       decoration-danger="state in ('cancelled','failed')"/>
+                <field name="batch_id" optional="show"/>
+                <field name="payment_date" optional="show"/>
+                <field name="journal_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         FORM VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_schedule_form" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.schedule.form</field>
+        <field name="model">rfh.treasury.payment.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Treasury Payment Schedule">
+                <header>
+                    <button name="action_queue" type="object" string="Queue"
+                            class="btn-primary"
+                            invisible="state not in ('draft','failed')"/>
+                    <button name="action_schedule" type="object" string="Schedule"
+                            class="btn-primary"
+                            invisible="state != 'queued'"/>
+                    <button name="action_approve" type="object" string="Approve for Payment"
+                            class="btn-primary"
+                            groups="rfh_treasury_payment_schedule.group_treasury_manager"
+                            invisible="state not in ('scheduled','batched')"/>
+                    <button name="action_mark_paid" type="object" string="Mark as Paid"
+                            class="btn-success"
+                            groups="rfh_treasury_payment_schedule.group_treasury_manager"
+                            invisible="state != 'approved'"
+                            confirm="This will mark the payment as paid and notify the originating document. Continue?"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            class="btn-secondary"
+                            groups="rfh_treasury_payment_schedule.group_treasury_manager"
+                            invisible="state in ('paid','cancelled','draft')"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft"
+                            invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,queued,scheduled,approved,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_treasury_payment_schedules" type="object"
+                                class="oe_stat_button" icon="fa-money"
+                                invisible="not account_payment_id">
+                            <field name="account_payment_id" string="Odoo Payment" widget="many2one_avatar"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Payment Details">
+                            <field name="partner_id"/>
+                            <field name="amount"/>
+                            <field name="amount_paid"
+                                   invisible="state not in ('approved','paid')"/>
+                            <field name="balance" readonly="1"
+                                   invisible="state not in ('approved','paid')"/>
+                            <field name="currency_id"/>
+                            <field name="priority"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Source Document">
+                            <field name="source_model" readonly="1"/>
+                            <field name="source_res_id" readonly="1"/>
+                            <field name="source_reference" readonly="1"/>
+                            <field name="source_document_url" widget="url" string="Open Document"
+                                   invisible="not source_document_url"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Dates">
+                            <field name="due_date"/>
+                            <field name="scheduled_date"/>
+                            <field name="payment_date"
+                                   required="state == 'approved'"/>
+                        </group>
+                        <group string="Payment Information">
+                            <field name="journal_id"
+                                   required="state == 'approved'"/>
+                            <field name="payment_method"/>
+                            <field name="payment_reference"/>
+                            <field name="batch_id" readonly="1"/>
+                            <field name="account_payment_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description" placeholder="Purpose of this payment..."/>
+                        </page>
+                        <page string="Treasury Notes">
+                            <field name="notes" placeholder="Internal treasury notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         KANBAN VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_schedule_kanban" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.schedule.kanban</field>
+        <field name="model">rfh.treasury.payment.schedule</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="amount"/>
+                <field name="currency_id"/>
+                <field name="priority"/>
+                <field name="priority_color"/>
+                <field name="state"/>
+                <field name="due_date"/>
+                <field name="scheduled_date"/>
+                <field name="source_reference"/>
+                <templates>
+                    <t t-name="card">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title">
+                                            <field name="name"/>
+                                        </strong>
+                                    </div>
+                                    <div class="o_kanban_record_body">
+                                        <field name="partner_id"/>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <div class="oe_kanban_bottom_left">
+                                        <field name="amount" widget="monetary"/>
+                                        <field name="currency_id" invisible="1"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <span t-att-class="'badge ' + (record.priority.raw_value == 'critical' ? 'text-bg-danger' : record.priority.raw_value == 'urgent' ? 'text-bg-warning' : record.priority.raw_value == 'high' ? 'text-bg-info' : 'text-bg-secondary')">
+                                            <field name="priority"/>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-muted small">
+                                    <span>Source: </span><field name="source_reference"/>
+                                    <span t-if="record.due_date.value"> | Due: <field name="due_date"/></span>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         CALENDAR VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_schedule_calendar" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.schedule.calendar</field>
+        <field name="model">rfh.treasury.payment.schedule</field>
+        <field name="arch" type="xml">
+            <calendar string="Treasury Payment Calendar"
+                      date_start="scheduled_date"
+                      color="priority_color"
+                      mode="month"
+                      quick_create="0">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="amount"/>
+                <field name="priority"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         PIVOT VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_schedule_pivot" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.schedule.pivot</field>
+        <field name="model">rfh.treasury.payment.schedule</field>
+        <field name="arch" type="xml">
+            <pivot string="Treasury Payments Analysis" disable_linking="1">
+                <field name="state" type="row"/>
+                <field name="priority" type="col"/>
+                <field name="amount" type="measure"/>
+                <field name="balance" type="measure"/>
+                <field name="amount_paid" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         GRAPH VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_schedule_graph" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.schedule.graph</field>
+        <field name="model">rfh.treasury.payment.schedule</field>
+        <field name="arch" type="xml">
+            <graph string="Treasury Payments" type="bar">
+                <field name="priority" type="row"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         SEARCH VIEW
+    ============================================================ -->
+    <record id="view_treasury_payment_schedule_search" model="ir.ui.view">
+        <field name="name">rfh.treasury.payment.schedule.search</field>
+        <field name="model">rfh.treasury.payment.schedule</field>
+        <field name="arch" type="xml">
+            <search string="Search Treasury Payments">
+                <field name="name" string="Reference"/>
+                <field name="partner_id" string="Payee"/>
+                <field name="source_reference" string="Source Document"/>
+                <field name="batch_id" string="Batch"/>
+
+                <!-- Filters -->
+                <filter string="Draft" name="filter_draft" domain="[('state','=','draft')]"/>
+                <filter string="Queued" name="filter_queued" domain="[('state','=','queued')]"/>
+                <filter string="Scheduled" name="filter_scheduled" domain="[('state','=','scheduled')]"/>
+                <filter string="Batched" name="filter_batched" domain="[('state','=','batched')]"/>
+                <filter string="Approved" name="filter_approved" domain="[('state','=','approved')]"/>
+                <filter string="Paid" name="filter_paid" domain="[('state','=','paid')]"/>
+                <filter string="Pending" name="filter_pending"
+                        domain="[('state','not in',['paid','cancelled','failed'])]"/>
+                <separator/>
+                <filter string="Overdue" name="filter_overdue"
+                        domain="[('due_date','&lt;',context_today().strftime('%Y-%m-%d')),('state','not in',['paid','cancelled'])]"/>
+                <filter string="Due Today" name="filter_due_today"
+                        domain="[('due_date','=',context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter string="Critical" name="filter_critical" domain="[('priority','=','critical')]"/>
+                <filter string="Urgent" name="filter_urgent" domain="[('priority','=','urgent')]"/>
+                <filter string="High Priority" name="filter_high" domain="[('priority','in',['high','urgent','critical'])]"/>
+                <separator/>
+                <filter string="My Company" name="filter_company"
+                        domain="[('company_id','=',allowed_company_ids[0])]"/>
+
+                <!-- Group by -->
+                <group expand="0" string="Group By">
+                    <filter string="State" name="group_state" context="{'group_by':'state'}"/>
+                    <filter string="Priority" name="group_priority" context="{'group_by':'priority'}"/>
+                    <filter string="Payee" name="group_partner" context="{'group_by':'partner_id'}"/>
+                    <filter string="Due Date" name="group_due" context="{'group_by':'due_date:month'}"/>
+                    <filter string="Scheduled Date" name="group_scheduled" context="{'group_by':'scheduled_date:month'}"/>
+                    <filter string="Batch" name="group_batch" context="{'group_by':'batch_id'}"/>
+                    <filter string="Source Model" name="group_source_model" context="{'group_by':'source_model'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by':'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         MAIN WINDOW ACTION
+    ============================================================ -->
+    <record id="action_treasury_payment_schedule" model="ir.actions.act_window">
+        <field name="name">Payment Schedules</field>
+        <field name="res_model">rfh.treasury.payment.schedule</field>
+        <field name="view_mode">list,kanban,calendar,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_treasury_payment_schedule_search"/>
+        <field name="context">{'search_default_filter_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No treasury payment schedules yet.
+            </p>
+            <p>
+                Queue payments from Purchase Orders, Vendor Bills or Expense Sheets,
+                or create a manual payment below.
+            </p>
+        </field>
+    </record>
+
+    <!-- Dashboard action (opens pivot + graph together) -->
+    <record id="action_treasury_payment_dashboard" model="ir.actions.act_window">
+        <field name="name">Payment Dashboard</field>
+        <field name="res_model">rfh.treasury.payment.schedule</field>
+        <field name="view_mode">graph,pivot,list</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Server action for wizard (called from list view Actions menu) -->
+    <record id="action_treasury_batch_wizard" model="ir.actions.act_window">
+        <field name="name">Create Payment Batch</field>
+        <field name="res_model">rfh.treasury.payment.batch.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="model_rfh_treasury_payment_schedule"/>
+        <field name="binding_view_types">list</field>
+    </record>
+
+</odoo>

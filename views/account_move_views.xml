@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Extend vendor bill (account.move) form -->
+    <record id="view_account_move_form_treasury" model="ir.ui.view">
+        <field name="name">account.move.form.treasury</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Smart button -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_treasury_payments" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        invisible="treasury_payment_count == 0 or move_type not in ('in_invoice','in_refund')">
+                    <field name="treasury_payment_count" string="Treasury Payments" widget="statinfo"/>
+                </button>
+            </xpath>
+
+            <!-- Queue button in header -->
+            <xpath expr="//header/button[last()]" position="after">
+                <button name="action_create_treasury_payment_schedule" type="object"
+                        string="Queue for Treasury Payment"
+                        class="btn-warning"
+                        groups="rfh_treasury_payment_schedule.group_treasury_user"
+                        invisible="state != 'posted' or payment_state in ('paid','reversed') or move_type not in ('in_invoice','in_refund')"/>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>
