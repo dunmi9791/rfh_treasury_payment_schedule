@@ -14,8 +14,8 @@
                   decoration-success="state == 'paid'"
                   default_order="priority_sequence asc, scheduled_date asc">
                 <field name="priority_color" widget="color_index" optional="show"/>
-                <field name="name" string="Reference"/>
-                <field name="source_reference" string="Source Doc"/>
+                <field name="name" string="Reference" width="150px"/>
+                <field name="source_reference" string="Source Doc" width="150px"/>
                 <field name="partner_id"/>
                 <field name="amount" sum="Total Amount"/>
                 <field name="balance" sum="Total Balance"/>
