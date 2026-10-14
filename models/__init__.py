@@ -1,3 +1,5 @@
+from . import res_company
+from . import res_config_settings
 from . import treasury_payment_origin_mixin
 from . import treasury_payment_schedule
 from . import treasury_payment_batch

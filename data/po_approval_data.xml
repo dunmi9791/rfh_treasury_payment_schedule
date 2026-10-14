@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="mail_activity_po_approval" model="mail.activity.type">
+        <field name="name">Purchase Order Approval</field>
+        <field name="summary">Approve purchase order</field>
+        <field name="icon">fa-check</field>
+        <field name="decoration_type">warning</field>
+        <field name="res_model">purchase.order</field>
+        <field name="delay_count">0</field>
+        <field name="category">default</field>
+    </record>
+
+    <record id="mail_template_po_approval_request" model="mail.template">
+        <field name="name">Purchase Order: Approval Request</field>
+        <field name="model_id" ref="purchase.model_purchase_order"/>
+        <field name="subject">Approval requested: {{ object.name }}</field>
+        <field name="email_from">{{ object.company_id.email_formatted or user.email_formatted or 'noreply@riders.local' }}</field>
+        <field name="email_to">{{ ctx.get('rfh_approver_email') or '' }}</field>
+        <field name="description">Sent to the Procurement Director when a purchase order needs approval before Treasury can pay it.</field>
+        <field name="body_html" type="html">
+<div style="margin: 0px; padding: 0px; font-size: 13px;">
+    <p>Hello,</p>
+    <p>
+        <t t-out="object.company_id.name or ''">Riders For Health</t>
+        needs you to approve purchase order
+        <strong t-out="object.name or ''">P00001</strong>
+        for <t t-out="object.partner_id.name or ''">Vendor</t>.
+    </p>
+    <p>
+        Amount:
+        <strong t-out="format_amount(object.amount_total, object.currency_id) or ''">0.00</strong>.
+        Treasury cannot queue, approve, or pay this order until you approve it.
+    </p>
+    <p>
+        <a t-attf-href="#{object.get_base_url()}/web#id=#{object.id}&amp;model=purchase.order&amp;view_type=form">Open the purchase order</a>
+    </p>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+</odoo>

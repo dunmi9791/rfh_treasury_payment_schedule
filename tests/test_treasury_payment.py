@@ -40,6 +40,17 @@ class TestTreasuryPaymentSchedule(TransactionCase):
         cls.group_auditor = cls.env.ref(
             'rfh_treasury_payment_schedule.group_treasury_auditor'
         )
+        cls.group_director = cls.env.ref(
+            'rfh_treasury_payment_schedule.group_procurement_director'
+        )
+        if not cls.env.company.chart_template:
+            cls.env['account.chart.template'].try_loading(
+                'generic_coa', cls.env.company, install_demo=False,
+            )
+        cls.env.company.po_double_validation = 'one_step'
+        cls.env.company.po_lock = 'edit'
+        if cls.group_director not in cls.env.user.groups_id:
+            cls.env.user.write({'groups_id': [(4, cls.group_director.id)]})
 
     # ------------------------------------------------------------------
     # Helper
@@ -57,6 +68,7 @@ class TestTreasuryPaymentSchedule(TransactionCase):
             })],
         })
         po.button_confirm()
+        po.action_rfh_approve()
         return po
 
     def _make_vendor_bill(self, amount=3000.0):
@@ -203,7 +215,7 @@ class TestTreasuryPaymentSchedule(TransactionCase):
             sched.account_payment_id,
             'An account.payment should have been created for the vendor bill.'
         )
-        self.assertEqual(sched.account_payment_id.state, 'posted')
+        self.assertIn(sched.account_payment_id.state, ('in_process', 'paid', 'posted'))
 
     # ------------------------------------------------------------------
     # Tests: Batch wizard

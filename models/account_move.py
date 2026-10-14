@@ -10,13 +10,19 @@ class AccountMove(models.Model):
         string='Treasury Payments',
         compute='_compute_treasury_payment_count',
     )
+    rfh_unapproved_po_names = fields.Char(
+        string='Unapproved Purchase Orders',
+        compute='_compute_rfh_unapproved_po_names',
+    )
 
     # ------------------------------------------------------------------
     # Computed
     # ------------------------------------------------------------------
 
     def _compute_treasury_payment_count(self):
-        Schedule = self.env['rfh.treasury.payment.schedule']
+        # sudo: the count is shown on the bill form. Accounting users who are
+        # not in a Treasury group must still be able to open the bill.
+        Schedule = self.env['rfh.treasury.payment.schedule'].sudo()
         for move in self:
             move.treasury_payment_count = Schedule.search_count([
                 ('source_model', '=', 'account.move'),
@@ -35,6 +41,7 @@ class AccountMove(models.Model):
             raise UserError(_('Only posted vendor bills can be queued for Treasury payment.'))
         if self.payment_state in ('paid', 'reversed'):
             raise UserError(_('This vendor bill is already paid or reversed.'))
+        self._rfh_assert_linked_purchase_orders_approved()
         return {
             'source_model': 'account.move',
             'source_res_id': self.id,
@@ -52,7 +59,45 @@ class AccountMove(models.Model):
         self.ensure_one()
         if self.move_type not in ('in_invoice', 'in_refund'):
             raise UserError(_('Only vendor bills can be queued for Treasury payment.'))
+        self._rfh_assert_linked_purchase_orders_approved()
         return super().action_create_treasury_payment_schedule()
+
+    def _rfh_linked_purchase_orders(self):
+        """Purchase orders whose lines are billed on this move.
+
+        Read with sudo so a Treasury user who cannot open Purchase still
+        cannot pay a bill that hangs off an unapproved order.
+        """
+        self.ensure_one()
+        move = self.sudo()
+        lines = move.invoice_line_ids if 'invoice_line_ids' in move._fields else move.line_ids
+        return lines.purchase_line_id.order_id
+
+    def _rfh_assert_linked_purchase_orders_approved(self):
+        self.ensure_one()
+        if self.move_type not in ('in_invoice', 'in_refund'):
+            return
+        blocked = self._rfh_linked_purchase_orders().filtered(
+            lambda order: order.rfh_approval_state != 'approved'
+        )
+        if blocked:
+            raise UserError(_(
+                'Vendor bill %(bill)s is linked to purchase order %(po)s, which is not approved. '
+                'Treasury cannot queue, approve, or pay it until the Procurement Director approves the purchase order.',
+                bill=self.display_name,
+                po=', '.join(blocked.mapped('name')),
+            ))
+
+    @api.depends('invoice_line_ids.purchase_line_id.order_id.rfh_approval_state')
+    def _compute_rfh_unapproved_po_names(self):
+        for move in self:
+            if move.move_type not in ('in_invoice', 'in_refund'):
+                move.rfh_unapproved_po_names = False
+                continue
+            blocked = move._rfh_linked_purchase_orders().filtered(
+                lambda order: order.rfh_approval_state != 'approved'
+            )
+            move.rfh_unapproved_po_names = ', '.join(blocked.mapped('name')) if blocked else False
 
     def action_treasury_payment_completed(self, payment_schedule):
         self.ensure_one()

@@ -7,3 +7,4 @@ access_treasury_batch_manager,Treasury Batch Manager,model_rfh_treasury_payment_
 access_treasury_batch_auditor,Treasury Batch Auditor,model_rfh_treasury_payment_batch,group_treasury_auditor,1,0,0,0
 access_treasury_batch_wizard_user,Treasury Batch Wizard User,model_rfh_treasury_payment_batch_wizard,group_treasury_user,1,1,1,1
 access_treasury_batch_wizard_manager,Treasury Batch Wizard Manager,model_rfh_treasury_payment_batch_wizard,group_treasury_manager,1,1,1,1
+access_rfh_po_approval_reject_wizard,Reject PO Approval Wizard,model_rfh_po_approval_reject_wizard,group_procurement_director,1,1,1,1
