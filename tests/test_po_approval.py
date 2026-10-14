@@ -126,6 +126,29 @@ class TestPurchaseOrderApproval(TransactionCase):
             callable_()
         self.assertIn('not approved', str(caught.exception).lower())
 
+    def _assert_direct_payment_blocked(self, callable_, po):
+        with self.assertRaises(UserError) as caught:
+            callable_()
+        message = str(caught.exception)
+        self.assertIn(po.name, message)
+        self.assertIn('not approved', message.lower())
+
+    def _register_payment(self, bill, user=None):
+        register = self.env['account.payment.register']
+        if user:
+            register = register.with_user(user)
+        wizard = register.with_context(
+            active_model='account.move',
+            active_ids=bill.ids,
+        ).create({})
+        return wizard._create_payments()
+
+    def _grant_invoicing(self, user):
+        user.write({
+            'groups_id': [(4, self.env.ref('account.group_account_invoice').id)],
+        })
+        self.env.registry.clear_cache()
+
     # ------------------------------------------------------------------
     # Permissions
     # ------------------------------------------------------------------
@@ -451,6 +474,106 @@ class TestPurchaseOrderApproval(TransactionCase):
         self.assertEqual(bill_sched.state, 'paid')
         self.assertTrue(bill_sched.account_payment_id)
         self.assertIn(bill_sched.account_payment_id.state, ('in_process', 'paid', 'posted'))
+
+    # ------------------------------------------------------------------
+    # Direct payment: Register Payment and bill pay actions
+    # ------------------------------------------------------------------
+
+    def test_unapproved_po_blocks_register_payment_and_bill_pay_actions(self):
+        po = self._make_confirmed_po()
+        bill = self._bill_from_po(po)
+        self._grant_invoicing(self.finance)
+        payable = bill.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'liability_payable'
+        )
+        self.assertTrue(payable)
+        payment_count = self.env['account.payment'].search_count([])
+
+        for pay in (
+            lambda: bill.action_register_payment(),
+            lambda: bill.action_force_register_payment(),
+            lambda: bill.sudo().action_register_payment(),
+            lambda: bill.with_user(self.finance).action_register_payment(),
+            lambda: payable.action_register_payment(),
+            lambda: self._register_payment(bill),
+            lambda: self._register_payment(bill, user=self.finance),
+            lambda: bill.js_assign_outstanding_line(payable[:1].id),
+        ):
+            self._assert_direct_payment_blocked(pay, po)
+
+        self.assertEqual(bill.payment_state, 'not_paid')
+        self.assertEqual(self.env['account.payment'].search_count([]), payment_count)
+
+    def test_unlinked_bill_can_register_payment(self):
+        account = self.env['account.account'].search([
+            ('account_type', '=', 'expense'),
+            ('company_ids', 'in', self.company.id),
+        ], limit=1)
+        bill = self.env['account.move'].create({
+            'move_type': 'in_invoice',
+            'partner_id': self.vendor.id,
+            'invoice_date': '2026-05-01',
+            'invoice_line_ids': [(0, 0, {
+                'name': 'Unlinked service',
+                'quantity': 1,
+                'price_unit': 800.0,
+                'account_id': account.id,
+            })],
+        })
+        bill.action_post()
+        payments = self._register_payment(bill)
+        self.assertTrue(payments)
+        self.assertIn(bill.payment_state, ('paid', 'in_payment', 'partial'))
+
+    def test_approved_linked_bill_can_register_payment(self):
+        po = self._make_confirmed_po(amount=900.0)
+        self._approve(po)
+        bill = self._bill_from_po(po)
+        action = bill.action_register_payment()
+        self.assertEqual(action['res_model'], 'account.payment.register')
+        payments = self._register_payment(bill)
+        self.assertTrue(payments)
+        self.assertIn(bill.payment_state, ('paid', 'in_payment', 'partial'))
+
+    def test_revoked_po_blocks_register_payment_until_approved_again(self):
+        po = self._make_confirmed_po(amount=750.0)
+        self._approve(po)
+        bill = self._bill_from_po(po)
+        self._change_price(po)
+        self._assert_direct_payment_blocked(lambda: self._register_payment(bill), po)
+        self.assertEqual(bill.payment_state, 'not_paid')
+        self._approve(po)
+        payments = self._register_payment(bill)
+        self.assertTrue(payments)
+        self.assertIn(bill.payment_state, ('paid', 'in_payment', 'partial'))
+
+    def test_grandfathered_po_bill_can_register_payment(self):
+        po = self._make_confirmed_po(amount=640.0)
+        po._rfh_grandfather_confirmed_orders()
+        self.assertTrue(po.rfh_approval_grandfathered)
+        bill = self._bill_from_po(po)
+        payments = self._register_payment(bill)
+        self.assertTrue(payments)
+        self.assertIn(bill.payment_state, ('paid', 'in_payment', 'partial'))
+
+    def test_treasury_mark_paid_still_works_when_register_payment_is_blocked(self):
+        """The schedule path stays the supported way to pay, and still pays once approved."""
+        po = self._make_confirmed_po(amount=480.0)
+        bill = self._bill_from_po(po)
+        self._assert_direct_payment_blocked(lambda: self._register_payment(bill), po)
+        self._assert_not_approved(bill.action_create_treasury_payment_schedule)
+        self._approve(po)
+        bill.action_create_treasury_payment_schedule()
+        sched = self._schedule(bill, 'account.move')
+        sched.action_schedule()
+        sched.action_approve()
+        sched.write({
+            'payment_date': '2026-06-03',
+            'journal_id': self.bank_journal.id,
+        })
+        sched.action_mark_paid()
+        self.assertEqual(sched.state, 'paid')
+        self.assertTrue(sched.account_payment_id)
 
     # ------------------------------------------------------------------
     # Upgrade / grandfather

@@ -73,13 +73,18 @@ class AccountMove(models.Model):
         lines = move.invoice_line_ids if 'invoice_line_ids' in move._fields else move.line_ids
         return lines.purchase_line_id.order_id
 
-    def _rfh_assert_linked_purchase_orders_approved(self):
+    def _rfh_unapproved_linked_purchase_orders(self):
+        """Purchase orders on this vendor bill that are not approved for payment."""
         self.ensure_one()
         if self.move_type not in ('in_invoice', 'in_refund'):
-            return
-        blocked = self._rfh_linked_purchase_orders().filtered(
+            return self.env['purchase.order']
+        return self._rfh_linked_purchase_orders().filtered(
             lambda order: order.rfh_approval_state != 'approved'
         )
+
+    def _rfh_assert_linked_purchase_orders_approved(self):
+        self.ensure_one()
+        blocked = self._rfh_unapproved_linked_purchase_orders()
         if blocked:
             raise UserError(_(
                 'Vendor bill %(bill)s is linked to purchase order %(po)s, which is not approved. '
@@ -88,15 +93,49 @@ class AccountMove(models.Model):
                 po=', '.join(blocked.mapped('name')),
             ))
 
+    def _rfh_assert_direct_payment_allowed(self):
+        """Block paying a vendor bill outside Treasury while its PO is unapproved.
+
+        Covers Register Payment (``account.payment.register``) and the pay
+        actions on ``account.move``. Treasury mark-paid creates
+        ``account.payment`` itself after its own approval check, so this
+        method is not used on that path. Customer invoices and bills with
+        no purchase-order link are left alone. Sudo does not skip the check.
+        """
+        details = []
+        for move in self:
+            blocked = move._rfh_unapproved_linked_purchase_orders()
+            if blocked:
+                details.append('%s (purchase order %s)' % (
+                    move.display_name,
+                    ', '.join(blocked.mapped('name')),
+                ))
+        if details:
+            raise UserError(_(
+                'Cannot pay this vendor bill because the linked purchase order is not approved: %s. '
+                'The Procurement Director must approve the purchase order before the bill can be paid.',
+                '; '.join(details),
+            ))
+
+    def action_register_payment(self):
+        self._rfh_assert_direct_payment_allowed()
+        return super().action_register_payment()
+
+    def action_force_register_payment(self):
+        self._rfh_assert_direct_payment_allowed()
+        return super().action_force_register_payment()
+
+    def js_assign_outstanding_line(self, line_id):
+        self._rfh_assert_direct_payment_allowed()
+        return super().js_assign_outstanding_line(line_id)
+
     @api.depends('invoice_line_ids.purchase_line_id.order_id.rfh_approval_state')
     def _compute_rfh_unapproved_po_names(self):
         for move in self:
             if move.move_type not in ('in_invoice', 'in_refund'):
                 move.rfh_unapproved_po_names = False
                 continue
-            blocked = move._rfh_linked_purchase_orders().filtered(
-                lambda order: order.rfh_approval_state != 'approved'
-            )
+            blocked = move._rfh_unapproved_linked_purchase_orders()
             move.rfh_unapproved_po_names = ', '.join(blocked.mapped('name')) if blocked else False
 
     def action_treasury_payment_completed(self, payment_schedule):

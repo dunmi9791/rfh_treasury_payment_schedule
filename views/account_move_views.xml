@@ -20,7 +20,7 @@
             <xpath expr="//sheet" position="before">
                 <div class="alert alert-warning" role="alert"
                      invisible="move_type not in ('in_invoice', 'in_refund') or not rfh_unapproved_po_names">
-                    Treasury cannot pay this bill until the linked purchase order is approved:
+                    This bill cannot be paid until the linked purchase order is approved:
                     <field name="rfh_unapproved_po_names" readonly="1"/>
                 </div>
             </xpath>

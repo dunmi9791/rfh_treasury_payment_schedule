@@ -11,9 +11,11 @@
 
         Purchase orders need a Procurement Director approval before Treasury
         can queue, approve, or pay the order or a vendor bill linked to it.
-        Confirmation itself is not blocked. Orders already confirmed when this
-        version is installed or upgraded are grandfathered so live payments
-        continue; draft orders are not.
+        Register Payment and the other pay actions on that bill are blocked
+        the same way. Bills with no purchase order are unchanged. Confirmation
+        itself is not blocked. Orders already confirmed when this version is
+        installed or upgraded are grandfathered so live payments continue;
+        draft orders are not.
     """,
     'author': 'Riders Workshop',
     'depends': [
