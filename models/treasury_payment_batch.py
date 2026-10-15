@@ -105,6 +105,9 @@ class TreasuryPaymentBatch(models.Model):
                 raise UserError(_('Only draft batches can be submitted.'))
             if not batch.line_ids:
                 raise UserError(_('Cannot submit an empty batch.'))
+            batch.line_ids.filtered(
+                lambda line: line.state not in ('paid', 'cancelled')
+            )._rfh_assert_purchase_approved_for_payment()
             batch.state = 'submitted'
             batch.message_post(body=_('Batch submitted for approval.'))
 
@@ -112,6 +115,9 @@ class TreasuryPaymentBatch(models.Model):
         for batch in self:
             if batch.state != 'submitted':
                 raise UserError(_('Only submitted batches can be approved.'))
+            batch.line_ids.filtered(
+                lambda line: line.state not in ('paid', 'cancelled')
+            )._rfh_assert_purchase_approved_for_payment()
             batch.state = 'approved'
             batch.message_post(body=_('Batch approved for payment.'))
 
@@ -123,6 +129,10 @@ class TreasuryPaymentBatch(models.Model):
                 raise UserError(_('Please set the Payment Date before marking the batch as paid.'))
             if not batch.journal_id:
                 raise UserError(_('Please select a Payment Journal before marking the batch as paid.'))
+
+            batch.line_ids.filtered(
+                lambda line: line.state not in ('paid', 'cancelled')
+            )._rfh_assert_purchase_approved_for_payment()
 
             for line in batch.line_ids:
                 if line.state in ('paid', 'cancelled'):

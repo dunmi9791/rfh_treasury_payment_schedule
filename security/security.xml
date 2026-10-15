@@ -28,6 +28,19 @@
         <field name="comment">Full access: create, approve, mark paid, batch, cancel.</field>
     </record>
 
+    <record id="module_category_rfh_procurement" model="ir.module.category">
+        <field name="name">RFH Procurement</field>
+        <field name="description">Purchase order approval before Treasury payment</field>
+        <field name="sequence">45</field>
+    </record>
+
+    <record id="group_procurement_director" model="res.groups">
+        <field name="name">Procurement Director</field>
+        <field name="category_id" ref="module_category_rfh_procurement"/>
+        <field name="implied_ids" eval="[(4, ref('purchase.group_purchase_user'))]"/>
+        <field name="comment">Can approve or reject purchase orders. When a company has a Procurement Director user set in Purchase settings, only that user may approve. When it is empty, any member of this group may approve. Treasury cannot pay an unapproved purchase order or a vendor bill linked to one.</field>
+    </record>
+
     <record id="group_treasury_auditor" model="res.groups">
         <field name="name">Treasury Auditor</field>
         <field name="category_id" ref="module_category_treasury"/>

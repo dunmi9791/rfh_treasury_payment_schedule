@@ -23,7 +23,7 @@ class HrExpenseSheet(models.Model):
     # ------------------------------------------------------------------
 
     def _compute_treasury_payment_count(self):
-        Schedule = self.env['rfh.treasury.payment.schedule']
+        Schedule = self.env['rfh.treasury.payment.schedule'].sudo()
         for sheet in self:
             sheet.treasury_payment_count = Schedule.search_count([
                 ('source_model', '=', 'hr.expense.sheet'),

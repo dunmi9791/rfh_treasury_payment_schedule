@@ -229,7 +229,17 @@ class TreasuryPaymentSchedule(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
                     'rfh.treasury.payment.schedule'
                 ) or _('New')
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        records.filtered(
+            lambda rec: rec.state not in ('draft', 'cancelled')
+        )._rfh_assert_purchase_approved_for_payment()
+        return records
+
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('state') in ('queued', 'approved', 'paid'):
+            self._rfh_assert_purchase_approved_for_payment()
+        return res
 
     def unlink(self):
         if any(rec.state == 'paid' for rec in self):
@@ -260,6 +270,7 @@ class TreasuryPaymentSchedule(models.Model):
         for rec in self:
             if rec.state not in ('draft', 'failed'):
                 raise UserError(_('Only draft or failed schedules can be queued.'))
+            rec._rfh_assert_purchase_approved_for_payment()
             rec.state = 'queued'
             rec.message_post(body=_('Payment queued for Treasury processing.'))
 
@@ -276,6 +287,7 @@ class TreasuryPaymentSchedule(models.Model):
         for rec in self:
             if rec.state not in ('scheduled', 'batched'):
                 raise UserError(_('Only scheduled or batched payments can be approved.'))
+            rec._rfh_assert_purchase_approved_for_payment()
             rec.state = 'approved'
             rec.message_post(body=_('Payment approved for disbursement.'))
 
@@ -283,6 +295,7 @@ class TreasuryPaymentSchedule(models.Model):
         for rec in self:
             if rec.state == 'cancelled':
                 raise UserError(_('Cancelled payments cannot be marked as paid.'))
+            rec._rfh_assert_purchase_approved_for_payment()
             if not rec.payment_date:
                 raise UserError(_('Please set the Actual Payment Date before marking as paid.'))
             if not rec.journal_id:
@@ -320,6 +333,42 @@ class TreasuryPaymentSchedule(models.Model):
             rec.message_post(body=_('Payment schedule reset to draft.'))
 
     # ------------------------------------------------------------------
+    # Purchase approval gate
+    # ------------------------------------------------------------------
+
+    def _rfh_purchase_orders_blocking_payment(self):
+        """Unapproved purchase orders this schedule must not pay.
+
+        Uses sudo so record rules on Purchase cannot hide an unapproved order
+        from a Treasury user.
+        """
+        self.ensure_one()
+        orders = self.env['purchase.order']
+        if self.source_model == 'purchase.order' and self.source_res_id:
+            orders = self.env['purchase.order'].sudo().browse(self.source_res_id).exists()
+        elif self.source_model == 'account.move' and self.source_res_id:
+            move = self.env['account.move'].sudo().browse(self.source_res_id).exists()
+            if move:
+                orders = move._rfh_linked_purchase_orders()
+        return orders.filtered(lambda order: order.rfh_approval_state != 'approved')
+
+    def _rfh_assert_purchase_approved_for_payment(self):
+        details = []
+        for schedule in self:
+            orders = schedule._rfh_purchase_orders_blocking_payment()
+            if orders:
+                details.append('%s (purchase order %s)' % (
+                    schedule.display_name,
+                    ', '.join(orders.mapped('name')),
+                ))
+        if details:
+            raise UserError(_(
+                'Treasury cannot queue, approve, or pay this document because '
+                'the linked purchase order is not approved: %s',
+                '; '.join(details),
+            ))
+
+    # ------------------------------------------------------------------
     # Accounting payment creation (used for vendor bills)
     # ------------------------------------------------------------------
 
@@ -344,7 +393,7 @@ class TreasuryPaymentSchedule(models.Model):
             'currency_id': self.currency_id.id,
             'date': self.payment_date,
             'journal_id': self.journal_id.id,
-            'ref': self.payment_reference or self.name,
+            'memo': self.payment_reference or self.name,
         })
         payment.action_post()
         self.account_payment_id = payment.id

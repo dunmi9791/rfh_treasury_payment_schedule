@@ -25,15 +25,52 @@
                        decoration-warning="treasury_payment_state == 'scheduled'"
                        decoration-primary="treasury_payment_state == 'partially_paid'"
                        decoration-success="treasury_payment_state == 'paid'"/>
+                <field name="rfh_approval_state" widget="badge"
+                       decoration-warning="rfh_approval_state in ('to_approve', 'requested')"
+                       decoration-success="rfh_approval_state == 'approved'"
+                       decoration-danger="rfh_approval_state == 'rejected'"/>
             </xpath>
 
-            <!-- Queue for Treasury Payment button in header -->
+            <!-- Approval and treasury buttons. Approval is enforced again in Python. -->
             <xpath expr="//header/button[last()]" position="after">
+                <field name="rfh_can_approve" invisible="1"/>
+                <button name="action_rfh_request_approval" type="object"
+                        string="Request Approval"
+                        class="btn-primary"
+                        groups="purchase.group_purchase_user"
+                        invisible="rfh_approval_state not in ('to_approve', 'rejected') or state == 'cancel'"/>
+                <button name="action_rfh_approve" type="object"
+                        string="Approve"
+                        class="btn-primary"
+                        groups="rfh_treasury_payment_schedule.group_procurement_director"
+                        invisible="not rfh_can_approve or rfh_approval_state not in ('to_approve', 'requested') or state == 'cancel'"/>
+                <button name="action_rfh_reject" type="object"
+                        string="Reject"
+                        class="btn-secondary"
+                        groups="rfh_treasury_payment_schedule.group_procurement_director"
+                        invisible="not rfh_can_approve or rfh_approval_state not in ('to_approve', 'requested') or state == 'cancel'"/>
                 <button name="action_create_treasury_payment_schedule" type="object"
                         string="Queue for Treasury Payment"
                         class="btn-warning"
                         groups="rfh_treasury_payment_schedule.group_treasury_user"
-                        invisible="state not in ('purchase','done') or treasury_payment_state in ('queued','scheduled','partially_paid','paid')"/>
+                        invisible="state not in ('purchase','done') or rfh_approval_state != 'approved' or treasury_payment_state in ('queued','scheduled','partially_paid','paid')"/>
+            </xpath>
+
+            <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <group string="Procurement Approval" name="rfh_po_approval">
+                    <group>
+                        <field name="rfh_approval_state" widget="badge"
+                               decoration-warning="rfh_approval_state in ('to_approve', 'requested')"
+                               decoration-success="rfh_approval_state == 'approved'"
+                               decoration-danger="rfh_approval_state == 'rejected'"/>
+                        <field name="rfh_approval_user_id"/>
+                        <field name="rfh_approval_date"/>
+                    </group>
+                    <group>
+                        <field name="rfh_approval_note"/>
+                        <field name="rfh_approval_grandfathered" invisible="not rfh_approval_grandfathered"/>
+                    </group>
+                </group>
             </xpath>
 
         </field>

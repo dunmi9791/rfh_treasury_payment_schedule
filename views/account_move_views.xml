@@ -17,13 +17,21 @@
                 </button>
             </xpath>
 
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning" role="alert"
+                     invisible="move_type not in ('in_invoice', 'in_refund') or not rfh_unapproved_po_names">
+                    This bill cannot be paid until the linked purchase order is approved:
+                    <field name="rfh_unapproved_po_names" readonly="1"/>
+                </div>
+            </xpath>
+
             <!-- Queue button in header -->
             <xpath expr="//header/button[last()]" position="after">
                 <button name="action_create_treasury_payment_schedule" type="object"
                         string="Queue for Treasury Payment"
                         class="btn-warning"
                         groups="rfh_treasury_payment_schedule.group_treasury_user"
-                        invisible="state != 'posted' or payment_state in ('paid','reversed') or move_type not in ('in_invoice','in_refund')"/>
+                        invisible="state != 'posted' or payment_state in ('paid','reversed') or move_type not in ('in_invoice','in_refund') or rfh_unapproved_po_names"/>
             </xpath>
 
         </field>

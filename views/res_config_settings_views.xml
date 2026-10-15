@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form_rfh_po_approval" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.rfh.po.approval</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="purchase.res_config_settings_view_form_purchase"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='purchase_setting_container']" position="inside">
+                <setting id="rfh_po_approver_setting"
+                         string="Procurement Director"
+                         company_dependent="1"
+                         help="Every new purchase order must be approved before Treasury can queue, approve, or pay it, including vendor bills linked to that order. This is separate from Odoo's Purchase Order Approval setting, which this flow does not use. Leave the user empty to let any member of the Procurement Director group approve. The user you set is added to that group.">
+                    <field name="rfh_po_approver_id"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
